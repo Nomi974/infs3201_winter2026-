@@ -9,10 +9,10 @@ const fs = require('fs/promises');
  */
 async function loadAssignmentData() {
 
-    let raw_assignment = await fs.readFile('assignments.json')
-    let assignment_data = await JSON.parse(raw_assignment)
+    let rawAssignment = await fs.readFile('assignments.json')
+    let assignmentData = await JSON.parse(rawAssignment)
 
-    return assignment_data
+    return assignmentData
 }
 
 /**
@@ -36,10 +36,10 @@ async function writeAssignmentData(assignmentList) {
  */
 async function loadEmployeesData() {
 
-    let raw_employee = await fs.readFile('employees.json')
-    let employee_data = await JSON.parse(raw_employee)
+    let rawEmployee = await fs.readFile('employees.json')
+    let employeeData = await JSON.parse(rawEmployee)
 
-    return employee_data
+    return employeeData
 }
 
 /**
@@ -63,10 +63,10 @@ async function writeEmployeeData(employeeList) {
  */
 async function loadShiftsData() {
 
-    let raw_shifts = await fs.readFile('shifts.json')
-    let shift_data = await JSON.parse(raw_shifts)
+    let rawShifts = await fs.readFile('shifts.json')
+    let shiftData = await JSON.parse(rawShifts)
 
-    return shift_data
+    return shiftData
 }
 
 /**

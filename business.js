@@ -12,37 +12,37 @@ async function allEmployees() {
 
 /**
  * Adds a new employee to the system and returns the updated list of employees.
- * @param {string} emp_name - Employee name
- * @param {string} emp_phone - Employee phone number
+ * @param {string} empName - Employee name
+ * @param {string} empPhone - Employee phone number
  * @returns {Promise<Array<Object>>}
  */
-async function addEmployee(emp_name, emp_phone) {
-    let employee_data = await persistence.loadEmployeesData();
-    let max_id = 0;
+async function addEmployee(empName, empPhone) {
+    let employeeData = await persistence.loadEmployeesData();
+    let maxId = 0;
 
     // Generate new ID by checking existing employee data
-    for (let e of employee_data) {
-        let num_id = parseInt(e.employeeId.slice(1));
-        if (num_id > max_id) {
-            max_id = num_id;
+    for (let e of employeeData) {
+        let numId = parseInt(e.employeeId.slice(1));
+        if (numId > maxId) {
+            maxId = numId;
         }
     }
 
     // Generate the new employee ID
-    let new_id = 'E' + String(max_id + 1).padStart(3, '0');
-    let new_employee = {
-        employeeId: new_id,
-        name: emp_name,
-        phone: emp_phone
+    let newId = 'E' + String(maxId + 1).padStart(3, '0');
+    let newEmployee = {
+        employeeId: newId,
+        name: empName,
+        phone: empPhone
     };
 
     // Add the new employee to the list
-    employee_data.push(new_employee);
+    employeeData.push(newEmployee);
 
     // Save the updated employee list
-    await persistence.writeEmployeeData(employee_data);
+    await persistence.writeEmployeeData(employeeData);
 
-    return employee_data;  
+    return employeeData;  
 }
 
 /**
@@ -52,20 +52,20 @@ async function addEmployee(emp_name, emp_phone) {
  * @returns {Promise<Array<Object>>}
  */
 async function assignEmployeeToShift(empID, shiftID) {
-    let assignment_data = await persistence.loadAssignmentData();
-    let shift_data = await persistence.loadShiftsData();
-    let employee_data = await persistence.loadEmployeesData();
+    let assignmentData = await persistence.loadAssignmentData();
+    let shiftData = await persistence.loadShiftsData();
+    let employeeData = await persistence.loadEmployeesData();
 
     // To get maxDailyHours from the config file
     let maxDailyHours = config.maxDailyHours; 
 
-    let emp_exists = false;
+    let employee_exists = false;
     let shift_exists = false;
-    let already_assigned = false;
+    let assigned = false;
     let newShift = null;
 
     // Check if employee exists
-    for (let e of employee_data) {
+    for (let e of employeeData) {
         if (e.employeeId === empID) {
             emp_exists = true;
             break;
@@ -77,7 +77,7 @@ async function assignEmployeeToShift(empID, shiftID) {
     }
 
     // Check if shift exists
-    for (let s of shift_data) {
+    for (let s of shiftData) {
         if (s.shiftId === shiftID) {
             shift_exists = true;
             newShift = s;
@@ -90,35 +90,35 @@ async function assignEmployeeToShift(empID, shiftID) {
     }
 
     // Check if employee is already assigned to this shift
-    for (let a of assignment_data) {
+    for (let a of assignmentData) {
         if (a.employeeId === empID && a.shiftId === shiftID) {
-            already_assigned = true;
+            assigned = true;
             break;
         }
     }
 
-    if (already_assigned) {
+    if (assigned) {
         return { error: 'Employee already assigned to this shift' };
     }
 
     // Intialize total scheduled hours for the employee on the same day 
-    let totalScheduledHours = 0;
+    let totalHoursScheduled = 0;
 
     // To find shifts assigned to the employee
-    for (let i = 0; i < assignment_data.length; i++) {
-        let assignment = assignment_data[i];
+    for (let i = 0; i < assignmentData.length; i++) {
+        let assignment = assignmentData[i];
         
         // If this assignment belongs to our employee
         if (assignment.employeeId === empID) {
             
             // To find the shift details in shift_data to check the date and time
-            for (let j = 0; j < shift_data.length; j++) {
-                let shift = shift_data[j];
+            for (let j = 0; j < shiftData.length; j++) {
+                let shift = shiftData[j];
 
                 // Only counts if it's the shift from the assignment and on the same date as newShift
                 if (shift.shiftId === assignment.shiftId && shift.date === newShift.date) {
                     
-                    totalScheduledHours += computeShiftDuration(shift.startTime, shift.endTime);
+                    totalHoursScheduled += computeShiftDuration(shift.startTime, shift.endTime);
 
                 }
             }
@@ -128,18 +128,18 @@ async function assignEmployeeToShift(empID, shiftID) {
     // To extract hours and minutes from the new shift's startTime and endTime
    let newShiftDuration= computeShiftDuration(newShift.startTime, newShift.endTime);
 
-    if (totalScheduledHours + newShiftDuration > maxDailyHours) {
+    if (totalHoursScheduled + newShiftDuration > maxDailyHours) {
         return { error: `Employee's total scheduled hours exceed the daily limit of ${maxDailyHours} hours.` };
     }
     
     // Create a new assignment
     let new_assignment = { employeeId: empID, shiftId: shiftID };
-    assignment_data.push(new_assignment);
+    assignmentData.push(new_assignment);
 
     // Save the updated assignment list
     await persistence.writeAssignmentData(assignment_data);
 
-    return assignment_data;  
+    return assignmentData;  
 }
 
 /**
@@ -177,14 +177,14 @@ function computeShiftDuration(startTime, endTime) {
  * @returns {Promise<Array<Object>>}
  */
 async function viewEmployeeSchedule(empID) {
-    let assignment_data = await persistence.loadAssignmentData();
-    let shift_data = await persistence.loadShiftsData();
+    let assignmentData = await persistence.loadAssignmentData();
+    let shiftData = await persistence.loadShiftsData();
 
     let schedule = [];
 
-    for (let a of assignment_data) {
+    for (let a of assignmentData) {
         if (a.employeeId === empID) {
-            let shift = shift_data.find(s => s.shiftId === a.shiftId);
+            let shift = shiftData.find(s => s.shiftId === a.shiftId);
             if (shift) {
                 schedule.push({
                     date: shift.date,
