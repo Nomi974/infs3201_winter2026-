@@ -1,0 +1,86 @@
+A4 Refactor Plan
+Student: 60098291
+INFS3201 - Winter 2026
+
+================================================================================
+
+Overview
+--------
+In assignment 3 we used 3 collections: employees, shifts, and assignments.
+The employees and shifts collections had their own custom id fields (employeeId
+like "E001" and shiftId like "S001"). The assignments collection was basically
+a join table linking the two.
+
+For assignment 4 we need to get rid of that relational style and use MongoDB
+properly. The main changes are:
+- Drop the custom employeeId and shiftId string fields, use _id (ObjectId) instead
+- Embed a list of employee ObjectIds directly inside each shift document
+- Delete the assignments collection entirely since we don't need it anymore
+
+
+Collections that will change
+-----------------------------
+employees: just removing the employeeId field. Everything else stays the same.
+
+shifts: removing the shiftId field, and adding an "employees" array that holds
+the ObjectIds of the employees assigned to that shift.
+
+assignments: this whole collection gets dropped once the data is moved into shifts.
+
+
+Persistence functions to change
+---------------------------------
+- getEmployeeById() and updateEmployee() need to query by _id (ObjectId) instead
+  of the old employeeId string. Will need to wrap the id with new ObjectId().
+
+- getAssignmentsByEmployeeId() can be removed since the assignments collection
+  is going away.
+
+- getShiftsByIds() also gets removed. Replace it with a new function like
+  getShiftsByEmployeeId() that just queries shifts where the employees array
+  contains the employee's ObjectId.
+
+
+Business logic changes
+-----------------------
+- getEmployeeDetailsPageModel() currently makes two DB calls (get assignments,
+  then get shifts). After the refactor it only needs one call using the new
+  getShiftsByEmployeeId() function.
+
+- All the id values coming from URLs (req.params.id) need to be converted with
+  new ObjectId() before being passed to the DB.
+
+- The handlebars views use {{employee.employeeId}} in links/forms, those need
+  to be updated to use {{employee._id}}.
+
+
+How embedded arrays affect updates
+------------------------------------
+To add an employee to a shift we use $addToSet (avoids duplicates).
+To remove one we use $pull.
+To find all shifts for an employee we just query { employees: empObjectId }.
+
+
+Risks I can think of
+---------------------
+- Forgetting to wrap id strings with new ObjectId() will cause queries to
+  silently return nothing, which will be annoying to debug.
+
+- Running the migration script twice would add duplicate ObjectIds into the
+  employees array. Using $addToSet instead of $push prevents this.
+
+- The handlebars templates will break if I forget to update the id references.
+
+- The custom session implementation (no express-session allowed) is probably
+  the trickiest part of this assignment.
+
+
+Migration order
+----------------
+1. Backup the database in Compass first
+2. Commit this file to GitHub before writing any code
+3. Write and run transform_db.js (add empty array -> populate from assignments -> remove old fields)
+4. Update persistence.js to use ObjectIds and new query patterns
+5. Update business.js and app.js
+6. Fix the handlebars views
+7. Commit, then move on to auth and session stuff
